@@ -1,49 +1,37 @@
 import os
-import pandas as pd
 import requests
-from duckduckgo_search import DDGS
-from PIL import Image
-from io import BytesIO
+import pandas as pd
+from dotenv import load_dotenv
+load_dotenv()
 
-# === CONFIG ===
-CSV_FILE = "final.csv"        # Your dataset file
-IMAGE_DIR = "player_images"   # Output folder for downloaded images
-MAX_IMAGES = 1                # One image per player
-IMAGE_SIZE = (400, 400)       # Resize for uniform cards
+# Access your API key
+API_KEY = os.getenv("SERPAPI_KEY")
 
-# === CREATE FOLDER ===
+
+CSV_FILE = r"data\ipl_player_stats_clean.csv"
+IMAGE_DIR = "player_images"
 os.makedirs(IMAGE_DIR, exist_ok=True)
 
-# === READ PLAYER NAMES ===
 df = pd.read_csv(CSV_FILE)
-player_names = df.iloc[:, 0].dropna().unique()
+player_names = df.iloc[:, 0].tolist()
 
-# === FUNCTION TO GENERATE PROMPT ===
-def create_search_prompt(player_name: str) -> str:
-    return (f"{player_name} IPL cricketer portrait photo, high quality, "
-            f"official jersey, background blurred, close-up headshot")
-
-# === FUNCTION TO DOWNLOAD IMAGE ===
-def download_image(url, save_path):
+for player in player_names:
+    file_name = os.path.join(IMAGE_DIR, f"{player.replace(' ', '_')}.jpg")
+    
+    if os.path.exists(file_name):
+        print(f"Image already exists for {player}, skipping download.")
+        continue
+    
+    query = f"{player} IPL cricket player portrait HD"
+    url = f"https://serpapi.com/search.json?q={query}&tbm=isch&api_key={API_KEY}"
+    
     try:
-        response = requests.get(url, timeout=10)
-        img = Image.open(BytesIO(response.content)).convert("RGB")
-        img = img.resize(IMAGE_SIZE)
-        img.save(save_path, "JPEG")
-        print(f"✅ Saved: {save_path}")
-    except Exception as e:
-        print(f"❌ Failed: {save_path} | Error: {e}")
-
-# === MAIN LOOP ===
-with DDGS() as ddgs:
-    for player in player_names:
-        prompt = create_search_prompt(player)
-        results = ddgs.images(prompt, max_results=MAX_IMAGES, safesearch="moderate")
-
-        for result in results:
-            image_url = result["image"]
-            save_path = os.path.join(IMAGE_DIR, f"{player.replace(' ', '_')}.jpg")
-            download_image(image_url, save_path)
-            break  # Only first image
-
-print("🎯 All player images downloaded successfully.")
+        res = requests.get(url).json()
+        img_url = res['images_results'][0]['original']  # first high-res image
+        img_data = requests.get(img_url).content
+        with open(file_name, "wb") as f:
+            f.write(img_data)
+        print(f"Downloaded {player}")
+    except:
+        print(f"No image found for {player}")
+print("Done!!")

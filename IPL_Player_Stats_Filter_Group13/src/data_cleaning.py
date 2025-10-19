@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 # ---------- Load Dataset ----------
-df = pd.read_csv("data/ipl_player_stats.csv")
+df = pd.read_csv("data/IPL dataset final.csv")
 
 print("Before cleaning:", df.shape)
 
